@@ -18,8 +18,23 @@ func Unpack(input string) (string, error) {
 	runes := make([]rune, 0, len(input))
 	// fmt.Printf("runes %v, %v, %v\n", runes, cap(runes), len(runes))
 	isLastCharacterDigit := false
+	isLastCharacterEscape := false
 	var lastCharacter rune
+
 	for _, r := range input {
+		if isLastCharacterEscape { // check on escape-symbols
+			lastCharacter = r
+			runes = append(runes, r)
+			isLastCharacterDigit = false
+			isLastCharacterEscape = false
+			continue
+		}
+
+		if r == '\\' {
+			isLastCharacterEscape = true
+			continue
+		}
+
 		digit, e := strconv.Atoi(string(r))
 		if e != nil { // letter
 			lastCharacter = r
