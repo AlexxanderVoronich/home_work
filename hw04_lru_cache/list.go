@@ -91,52 +91,35 @@ func (l *list) PushBack(v interface{}) *ListItem {
 }
 
 func (l *list) Remove(i *ListItem) {
-	if i == nil {
-		return
-	}
-
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	el := l.first
-	for el != nil {
-		if el != i {
-			el = el.Next
-			continue
-		}
-
-		if l.length == 1 {
-			l.end = nil
-			l.first = nil
-			l.length = 0
-			return
-		}
-
-		prev := el.Prev
-		next := el.Next
-
-		if el == l.first {
-			l.first = next
-		} else if el == l.end {
-			l.end = prev
-		}
-
-		if prev != nil {
-			prev.Next = next
-		}
-		if next != nil {
-			next.Prev = prev
-		}
-		l.length--
+	if l.length == 1 && i == l.first {
+		l.end = nil
+		l.first = nil
+		l.length = 0
 		return
 	}
+
+	prev := i.Prev
+	next := i.Next
+
+	if i == l.first {
+		l.first = next
+	} else if i == l.end {
+		l.end = prev
+	}
+
+	if prev != nil {
+		prev.Next = next
+	}
+	if next != nil {
+		next.Prev = prev
+	}
+	l.length--
 }
 
 func (l *list) MoveToFront(i *ListItem) {
-	if i == nil {
-		return
-	}
-
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -145,29 +128,20 @@ func (l *list) MoveToFront(i *ListItem) {
 	}
 
 	// remove old element
-	el := l.first
-	for el != nil {
-		if el != i {
-			el = el.Next
-			continue
-		}
+	prev := i.Prev
+	next := i.Next
 
-		prev := el.Prev
-		next := el.Next
+	if i == l.first {
+		l.first = next
+	} else if i == l.end {
+		l.end = prev
+	}
 
-		if el == l.first {
-			l.first = next
-		} else if el == l.end {
-			l.end = prev
-		}
-
-		if prev != nil {
-			prev.Next = next
-		}
-		if next != nil {
-			next.Prev = prev
-		}
-		break
+	if prev != nil {
+		prev.Next = next
+	}
+	if next != nil {
+		next.Prev = prev
 	}
 
 	// push element front
