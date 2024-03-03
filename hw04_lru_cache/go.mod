@@ -1,4 +1,4 @@
-module github.com/fixme_my_friend/hw04_lru_cache
+module github.com/AlexxanderVoronich/hw04lrucache
 
 go 1.19
 

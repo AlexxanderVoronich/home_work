@@ -1,6 +1,7 @@
 package hw04lrucache
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -47,5 +48,24 @@ func TestList(t *testing.T) {
 			elems = append(elems, i.Value.(int))
 		}
 		require.Equal(t, []int{70, 80, 60, 40, 10, 30, 50}, elems)
+	})
+}
+
+func TestConcurrentList(t *testing.T) {
+	t.Run("concurrency", func(t *testing.T) {
+		l := NewList()
+		numConcurrent := 10_000
+		var wg sync.WaitGroup
+		wg.Add(numConcurrent)
+
+		for i := 1; i <= numConcurrent; i++ {
+			go func(value int) {
+				defer wg.Done()
+				l.PushBack(value)
+			}(i)
+		}
+
+		wg.Wait()
+		require.Equal(t, 10_000, l.Len())
 	})
 }
