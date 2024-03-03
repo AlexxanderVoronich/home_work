@@ -49,44 +49,34 @@ func (l *list) Back() *ListItem {
 }
 
 func (l *list) PushFront(v interface{}) *ListItem {
-	item := new(ListItem)
-	item.Value = v
-	item.Prev = nil
-
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	item.Next = l.first
+	item := &ListItem{Value: v, Next: l.first}
+	if l.first != nil {
+		l.first.Prev = item
+	}
 	l.first = item
+	if l.end == nil {
+		l.end = item
+	}
 	l.length++
-
-	if l.first.Next != nil {
-		l.first.Next.Prev = l.first
-	}
-	if l.length == 1 {
-		l.end = l.first
-	}
 	return item
 }
 
 func (l *list) PushBack(v interface{}) *ListItem {
-	item := new(ListItem)
-	item.Value = v
-	item.Next = nil
-
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	item.Prev = l.end
+	item := &ListItem{Value: v, Prev: l.end}
+	if l.end != nil {
+		l.end.Next = item
+	}
 	l.end = item
+	if l.first == nil {
+		l.first = item
+	}
 	l.length++
-
-	if l.end.Prev != nil {
-		l.end.Prev.Next = l.end
-	}
-	if l.length == 1 {
-		l.first = l.end
-	}
 	return item
 }
 
@@ -94,27 +84,16 @@ func (l *list) Remove(i *ListItem) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	if l.length == 1 && i == l.first {
-		l.end = nil
-		l.first = nil
-		l.length = 0
-		return
+	if i.Prev != nil {
+		i.Prev.Next = i.Next
+	} else { // i - first
+		l.first = i.Next
 	}
 
-	prev := i.Prev
-	next := i.Next
-
-	if i == l.first {
-		l.first = next
-	} else if i == l.end {
-		l.end = prev
-	}
-
-	if prev != nil {
-		prev.Next = next
-	}
-	if next != nil {
-		next.Prev = prev
+	if i.Next != nil {
+		i.Next.Prev = i.Prev
+	} else { // i - end
+		l.end = i.Prev
 	}
 	l.length--
 }
@@ -128,20 +107,16 @@ func (l *list) MoveToFront(i *ListItem) {
 	}
 
 	// remove old element
-	prev := i.Prev
-	next := i.Next
-
-	if i == l.first {
-		l.first = next
-	} else if i == l.end {
-		l.end = prev
+	if i.Prev != nil {
+		i.Prev.Next = i.Next
+	} else { // i - first
+		l.first = i.Next
 	}
 
-	if prev != nil {
-		prev.Next = next
-	}
-	if next != nil {
-		next.Prev = prev
+	if i.Next != nil {
+		i.Next.Prev = i.Prev
+	} else { // i - end
+		l.end = i.Prev
 	}
 
 	// push element front
@@ -168,9 +143,5 @@ func (l *list) Clear() {
 
 // NewList is constructor for list.
 func NewList() List {
-	return &list{
-		first:  nil,
-		end:    nil,
-		length: 0,
-	}
+	return &list{first: nil, end: nil, length: 0}
 }
