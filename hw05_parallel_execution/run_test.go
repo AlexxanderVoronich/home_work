@@ -69,7 +69,7 @@ func TestRun(t *testing.T) {
 		require.LessOrEqual(t, int64(elapsedTime), int64(sumTime/2), "tasks were run sequentially?")
 	})
 
-	t.Run("tasks concurrency with three allowed errors", func(t *testing.T) {
+	t.Run("tasks concurrency with on 1 and 4 goroutines", func(t *testing.T) {
 		tasksCount := 60
 		tasks := make([]Task, 0, tasksCount)
 
@@ -86,33 +86,54 @@ func TestRun(t *testing.T) {
 					wrappedErr := fmt.Errorf("wrap error: %w", err)
 					return wrappedErr
 				}
-				for j := 0; j < 1_000_000_000; j++ {
+				for j := 0; j < 200_000_000; j++ {
 					_ = math.Sqrt(float64(j))
 				}
 				dur := time.Since(start)
-				// fmt.Printf("i=%d :Part duration = %s\n", i, dur.String())
 				atomic.AddInt64(&sumTime, dur.Nanoseconds())
-				// fmt.Printf("i=%d :Whole time = %d\n", i, sum)
 				return nil
 			})
 		}
 
-		workersCount := 4
+		/*go assert.Eventually(t, func() bool {
+			val := atomic.LoadInt32(&runTasksCount)
+			t.Logf("Out %d\n", val)
+			return val >= int32(tasksCount)
+		}, 10*time.Second, 500*time.Millisecond, "expected to be executed")*/
+
+		// start first experiment with 1 goroutine
+		workersCount := 1
 		maxErrorsCount := 3
 
 		start := time.Now()
 		err := Run(tasks, workersCount, maxErrorsCount)
-		elapsedTime := time.Since(start)
+		elapsedTime1 := time.Since(start)
 		require.NoError(t, err)
-		/*require.Eventually(t, func() bool {
-			return runTasksCount == int32(tasksCount)
-		}, 5*time.Second, time.Second, "expected %d tasks to be executed, not %d", tasksCount, runTasksCount)
-		*/
-		sumTimeDuration := time.Duration(atomic.LoadInt64(&sumTime))
-		fmt.Printf("Real elapsedTime = %s, sum time = %s\n", elapsedTime.String(), sumTimeDuration.String())
+		sumTimeDuration1 := time.Duration(atomic.LoadInt64(&sumTime))
+		t.Logf("Real elapsedTime on 1g = %s, sum time = %s\n", elapsedTime1.String(), sumTimeDuration1.String())
 		require.Equal(t, int32(tasksCount), runTasksCount,
 			"expected %d tasks to be executed, not %d", tasksCount, runTasksCount)
-		require.LessOrEqual(t, int64(elapsedTime), int64(sumTimeDuration), "tasks were run sequentially?")
+
+		// start second experiment with 4 goroutines
+		workersCount = 4
+		maxErrorsCount = 3
+		runTasksCount = 0
+		sumTime = 0
+
+		start = time.Now()
+		err2 := Run(tasks, workersCount, maxErrorsCount)
+		elapsedTime2 := time.Since(start)
+		require.NoError(t, err2)
+		sumTimeDuration2 := time.Duration(atomic.LoadInt64(&sumTime))
+		t.Logf("Real elapsedTime on 4g = %s, sum time = %s\n", elapsedTime2.String(), sumTimeDuration1.String())
+		require.Equal(t, int32(tasksCount), runTasksCount,
+			"expected %d tasks to be executed, not %d", tasksCount, runTasksCount)
+
+		// check both experiments
+		require.LessOrEqual(t, int64(elapsedTime2), int64(elapsedTime1),
+			"compare tasks duration on 1g and 4g")
+		require.LessOrEqual(t, int64(elapsedTime2), int64(sumTimeDuration2),
+			"compare real and accumulate tasks duration for 4g")
 	})
 
 	t.Run("if the max number of errors is negative, than consider it to be zero", func(t *testing.T) {
