@@ -16,7 +16,6 @@ func Run(tasks []Task, n, maxErrors int) error {
 	if maxErrors < 0 {
 		maxErrors = 0
 	}
-
 	errorsCount := 0
 	var wg sync.WaitGroup
 	taskCh := make(chan func() error)
@@ -25,7 +24,6 @@ func Run(tasks []Task, n, maxErrors int) error {
 	isErrorsLimitExceeded := false
 	worker := func() {
 		defer wg.Done()
-
 		for task := range taskCh {
 			err := task()
 			if err != nil {
@@ -33,17 +31,14 @@ func Run(tasks []Task, n, maxErrors int) error {
 				errorsCount++
 				mutex.Unlock()
 			}
-
 			mutex.RLock()
 			if errorsCount > maxErrors {
-				// fmt.Printf("Exceeding errors: worker %v is off\n", errorsCount-maxErrors)
 				mutex.RUnlock()
 				doneWithMaxErrorsCh <- true
 				return
 			}
 			mutex.RUnlock()
 		}
-		// fmt.Printf("Worker is off without exceed\n")
 	}
 
 	for i := 0; i < n; i++ {
@@ -58,7 +53,6 @@ func Run(tasks []Task, n, maxErrors int) error {
 			isErrorsLimitExceeded = true
 		}
 		if isErrorsLimitExceeded {
-			// fmt.Printf("Finish work with tasks because of the high number of errors\n")
 			break
 		}
 	}
