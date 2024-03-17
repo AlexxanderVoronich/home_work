@@ -10,7 +10,7 @@ import (
 
 const (
 	sleepPerStage = time.Millisecond * 100
-	fault         = sleepPerStage / 2
+	fault         = time.Millisecond * 150
 )
 
 func TestPipeline(t *testing.T) {
@@ -36,6 +36,14 @@ func TestPipeline(t *testing.T) {
 		g("Stringifier", func(v interface{}) interface{} { return strconv.Itoa(v.(int)) }),
 	}
 
+	stages2 := []Stage{
+		g("Dummy", func(v interface{}) interface{} { return v }),
+		g("Multiplier (* 2)", func(v interface{}) interface{} { return v.(float64) * 2 }),
+		g("Adder (+ 100)", func(v interface{}) interface{} { return v.(float64) + 100 }),
+		g("Subtractor (- 50)", func(v interface{}) interface{} { return v.(float64) - 50 }),
+		g("Stringifier", func(v interface{}) interface{} { return strconv.FormatFloat(v.(float64), 'f', -1, 64) }),
+	}
+
 	t.Run("simple case", func(t *testing.T) {
 		in := make(Bi)
 		data := []int{1, 2, 3, 4, 5}
@@ -59,6 +67,31 @@ func TestPipeline(t *testing.T) {
 			int64(elapsed),
 			// ~0.8s for processing 5 values in 4 stages (100ms every) concurrently
 			int64(sleepPerStage)*int64(len(stages)+len(data)-1)+int64(fault))
+	})
+
+	t.Run("complex case", func(t *testing.T) {
+		in := make(Bi)
+		data := []float64{1.0, 2.0, 3.0, 4.0, 5.0}
+
+		go func() {
+			for _, v := range data {
+				in <- v
+			}
+			close(in)
+		}()
+
+		result := make([]string, 0, 10)
+		start := time.Now()
+		for s := range ExecutePipeline(in, nil, stages2...) {
+			result = append(result, s.(string))
+		}
+		elapsed := time.Since(start)
+
+		require.Equal(t, []string{"52", "54", "56", "58", "60"}, result)
+		require.Less(t,
+			int64(elapsed),
+			// ~0.8s for processing 5 values in 4 stages (100ms every) concurrently
+			int64(sleepPerStage)*int64(len(stages2)+len(data)-1)+int64(fault))
 	})
 
 	t.Run("done case", func(t *testing.T) {
