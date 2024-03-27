@@ -28,10 +28,6 @@ func validateFilePath(filePath string) (string, error) {
 	return filePath, nil
 }
 
-func isPseudoDevice(info os.FileInfo) bool {
-	return info.Mode()&os.ModeCharDevice != 0 || info.Mode()&os.ModeDevice != 0
-}
-
 // Copy copies the content from the source path to the destination path,
 // with the specified offset and limit.
 func Copy(fromPath, toPath string, offset, limit int64) error {
@@ -46,7 +42,7 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 		return err
 	}
 
-	if isPseudoDevice(fileInfo) {
+	if !fileInfo.Mode().IsRegular() {
 		return ErrUnsupportedFile
 	}
 
